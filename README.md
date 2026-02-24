@@ -2,7 +2,7 @@
 A simple, juicy tween animation library for Godot 4.
 
 ## Installation
-1. Download from the Godot Asset Library or copy `addons/TweenFX` into your project
+1. Download from the [Godot Asset Library](https://godotengine.org/asset-library/asset/4827) or copy `addons/TweenFX` into your project
 2. Enable the plugin in Project Settings → Plugins
 
 ## Usage
@@ -34,7 +34,7 @@ It includes an interactive tutorial.
 ## License
 MIT — free for personal and commercial use.
 
-## Demo Fonts
+## Fonts used in demo
 - PxPlus IBM VGA8
 - PixelOperator8
 - Google Sans Code

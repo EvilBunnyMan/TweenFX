@@ -89,6 +89,10 @@ enum Animations {
 	GHOST,
 	ATTRACT,
 	ORBIT,
+	PRESS,
+	PRESS_ROTATE,
+	MAGNETIC_PULL,
+	HEADSHAKE
 }
 
 enum AnimationType {
@@ -147,6 +151,10 @@ const ANIMATION_TYPES: Dictionary = {
 	Animations.FOLD_OUT:          AnimationType.ONE_SHOT,
 	Animations.POINT:             AnimationType.ONE_SHOT,
 	Animations.TADA:              AnimationType.ONE_SHOT,
+	Animations.PRESS:             AnimationType.ONE_SHOT,
+	Animations.PRESS_ROTATE:      AnimationType.ONE_SHOT,
+	Animations.MAGNETIC_PULL:     AnimationType.ONE_SHOT,
+	Animations.HEADSHAKE:         AnimationType.ONE_SHOT,
 
 	Animations.COLOR_CYCLE:       AnimationType.LOOPING,
 	Animations.HEARTBEAT:         AnimationType.LOOPING,
@@ -196,28 +204,26 @@ func is_looping_type(anim: Animations) -> bool:
 ## Returns true if the animation requires a Node2D target instead of CanvasItem.
 func requires_node2d(anim: Animations) -> bool:
 	return ANIMATION_REQUIREMENTS.get(anim, NodeRequirement.CANVAS_ITEM) == NodeRequirement.NODE_2D
-	
 #endregion
 
 #region TWEEN ANIMATIONS
 
 	#region Looping
-
 ## Goes through the colors.
-func color_cycle(node: CanvasItem, duration: float = 3.0) -> Tween:
+func color_cycle(node: CanvasItem, duration: float = 3.0, saturation: float = 1.0, value: float = 1.0) -> Tween:
 	TweenManager.stop(node, Animations.COLOR_CYCLE)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.set_trans(Tween.TRANS_SINE)
 	var colors = [
-		Color.from_hsv(0.0, 1.0, 1.0),
-		Color.from_hsv(0.17, 1.0, 1.0),
-		Color.from_hsv(0.33, 1.0, 1.0),
-		Color.from_hsv(0.5, 1.0, 1.0),
-		Color.from_hsv(0.67, 1.0, 1.0),
-		Color.from_hsv(0.83, 1.0, 1.0),
-		Color.from_hsv(1.0, 1.0, 1.0)
+		Color.from_hsv(0.0,  saturation, value),
+		Color.from_hsv(0.17, saturation, value),
+		Color.from_hsv(0.33, saturation, value),
+		Color.from_hsv(0.5,  saturation, value),
+		Color.from_hsv(0.67, saturation, value),
+		Color.from_hsv(0.83, saturation, value),
+		Color.from_hsv(1.0,  saturation, value),
 	]
 	for color in colors:
 		tween.tween_property(node, "modulate", color, duration / colors.size())
@@ -227,8 +233,8 @@ func color_cycle(node: CanvasItem, duration: float = 3.0) -> Tween:
 ## Simulates a heartbeat with two rhythmic pulses.
 func heartbeat(node: CanvasItem, duration: float = 1.0, strength: float = 0.2) -> Tween:
 	TweenManager.stop(node, Animations.HEARTBEAT)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "scale", original_scale * (1 + strength), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", original_scale, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
@@ -242,21 +248,22 @@ func heartbeat(node: CanvasItem, duration: float = 1.0, strength: float = 0.2) -
 ## Rotates the node back and forth like a pendulum.
 func swing(node: CanvasItem, duration: float = 1.0, angle: float = 30.0) -> Tween:
 	TweenManager.stop(node, Animations.SWING)
-	var tween = node.get_tree().create_tween()
+	var original_rotation : float = node.rotation_degrees
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.set_trans(Tween.TRANS_SINE)
-	tween.tween_property(node, "rotation_degrees", angle, duration * 0.5)
-	tween.tween_property(node, "rotation_degrees", -angle, duration)
-	tween.tween_property(node, "rotation_degrees", 0, duration * 0.5)
+	tween.tween_property(node, "rotation_degrees", original_rotation + angle, duration * 0.5)
+	tween.tween_property(node, "rotation_degrees", original_rotation - angle, duration)
+	tween.tween_property(node, "rotation_degrees", original_rotation, duration * 0.5)
 	TweenManager.track(node, Animations.SWING, tween)
 	return tween
 
 ## Applies a wave-like distortion effect to the node.
 func wave_distort(node: Node2D, duration: float = 1.0, amplitude: float = 0.1) -> Tween:
 	TweenManager.stop(node, Animations.WAVE_DISTORT)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.set_trans(Tween.TRANS_SINE)
@@ -278,7 +285,7 @@ func wave_distort(node: Node2D, duration: float = 1.0, amplitude: float = 0.1) -
 ## Slightly rotates the node back and forth.
 func wiggle(node: CanvasItem, duration: float = 1.2) -> Tween:
 	TweenManager.stop(node, Animations.WIGGLE)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "rotation_degrees", 5.0, duration * 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(node, "rotation_degrees", -5.0, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -290,7 +297,7 @@ func wiggle(node: CanvasItem, duration: float = 1.2) -> Tween:
 func float_bob(node: CanvasItem, duration: float = 2.0, height: float = 5.0) -> Tween:
 	TweenManager.stop(node, Animations.FLOAT_BOB)
 	var original_pos: Vector2 = node.position
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "position:y", original_pos.y - height, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(node, "position:y", original_pos.y + height, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -302,7 +309,7 @@ func glow_pulse(node: CanvasItem, duration: float = 1.2, scale_amt: float = 0.05
 	TweenManager.stop(node, Animations.GLOW_PULSE)
 	var original_scale: Vector2 = node.scale
 	var original_alpha: float = node.modulate.a
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "scale", original_scale * (1.0 + scale_amt), duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.parallel().tween_property(node, "modulate:a", original_alpha * (1.0 - alpha_amt), duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -315,7 +322,7 @@ func glow_pulse(node: CanvasItem, duration: float = 1.2, scale_amt: float = 0.05
 func rotate_hop(node: CanvasItem, duration: float = 0.4, angle: float = 15.0, height: float = 10.0) -> Tween:
 	TweenManager.stop(node, Animations.ROTATE_HOP)
 	var start_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "rotation_degrees", angle, duration * 0.25)
 	tween.parallel().tween_property(node, "position:y", start_pos.y - height, duration * 0.25)
@@ -329,8 +336,8 @@ func rotate_hop(node: CanvasItem, duration: float = 0.4, angle: float = 15.0, he
 ## Pure entropy: spin, random jitter, squash-stretch bounce.
 func spin_bounce(node: CanvasItem, duration: float = 0.6, bounce_scale: float = 0.2, spin_speed: float = 180.0) -> Tween:
 	TweenManager.stop(node, Animations.SPIN_BOUNCE)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.parallel().tween_property(node, "rotation_degrees", node.rotation_degrees + spin_speed, duration).set_trans(Tween.TRANS_LINEAR)
 	tween.parallel().tween_property(node, "scale", original_scale * Vector2(1.0 + randf_range(-bounce_scale, bounce_scale), 1.0 + randf_range(-bounce_scale, bounce_scale)), duration * 0.5)
@@ -341,8 +348,8 @@ func spin_bounce(node: CanvasItem, duration: float = 0.6, bounce_scale: float = 
 ## Makes the object look like it's trying to fly off in a panic.
 func mad_helico(node: CanvasItem, duration: float = 0.6, spin_speed: float = 1080.0, bob_height: float = 5.0) -> Tween:
 	TweenManager.stop(node, Animations.MAD_HELICO)
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.parallel().tween_property(node, "rotation_degrees", node.rotation_degrees + spin_speed, duration).set_trans(Tween.TRANS_LINEAR)
 	tween.tween_property(node, "position:y", original_pos.y - bob_height, duration * 0.3).set_trans(Tween.TRANS_SINE)
@@ -354,9 +361,9 @@ func mad_helico(node: CanvasItem, duration: float = 0.6, spin_speed: float = 108
 ## Makes objects drip down slowly and squash — like they're melting.
 func melt(node: CanvasItem, duration: float = 2.0, melt_distance: float = 20.0) -> Tween:
 	TweenManager.stop(node, Animations.MELT)
-	var original_pos = node.position
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.parallel().tween_property(node, "position:y", original_pos.y + melt_distance, duration * 0.5).set_trans(Tween.TRANS_LINEAR)
 	tween.parallel().tween_property(node, "scale:y", original_scale.y * 1.3, duration * 0.5)
@@ -368,9 +375,9 @@ func melt(node: CanvasItem, duration: float = 2.0, melt_distance: float = 20.0) 
 ## Gives the object rubbery springy movement.
 func idle_rubber(node: CanvasItem, duration: float = 0.6, strength: float = 0.1) -> Tween:
 	TweenManager.stop(node, Animations.IDLE_RUBBER)
-	var original_pos = node.position
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "position:x", original_pos.x + 6, duration * 0.3)
 	tween.parallel().tween_property(node, "scale", original_scale * Vector2(1.1, 0.9), duration * 0.3)
@@ -384,9 +391,9 @@ func idle_rubber(node: CanvasItem, duration: float = 0.6, strength: float = 0.1)
 ## Floats upward with a bit of distortion.
 func bubble_ascend(node: CanvasItem, duration: float = 2.0, height: float = 15.0) -> Tween:
 	TweenManager.stop(node, Animations.BUBBLE_ASCEND)
-	var original_pos = node.position
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "position:y", original_pos.y - height, duration * 0.6).set_trans(Tween.TRANS_SINE)
 	tween.parallel().tween_property(node, "scale:y", original_scale.y * 0.95, duration * 0.3)
@@ -396,24 +403,96 @@ func bubble_ascend(node: CanvasItem, duration: float = 2.0, height: float = 15.0
 	return tween
 
 ## Very subtle slow scale pulse. Good for alive/idle state.
-func breathe(node: CanvasItem, duration: float = 3.0, strength: float = 0.03) -> Tween:
+func breathe(node: CanvasItem, duration: float = 3.0, strength: float = 0.1) -> Tween:
 	TweenManager.stop(node, Animations.BREATHE)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.set_loops()
 	tween.tween_property(node, "scale", original_scale * (1.0 + strength), duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(node, "scale", original_scale, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	TweenManager.track(node, Animations.BREATHE, tween)
 	return tween
+
+## Slowly fades to low alpha and back, ethereal feel.
+func ghost(node: CanvasItem, duration: float = 2.0, min_alpha: float = 0.2) -> Tween:
+	TweenManager.stop(node, Animations.GHOST)
+	var original_alpha: float = node.modulate.a
+	var tween := node.get_tree().create_tween()
+	tween.set_loops()
+	tween.tween_property(node, "modulate:a", min_alpha, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "modulate:a", original_alpha, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	TweenManager.track(node, Animations.GHOST, tween)
+	return tween
+
+## Grows slightly then pulses to draw attention.
+func attract(node: CanvasItem, duration: float = 1.2, strength: float = 0.12) -> Tween:
+	TweenManager.stop(node, Animations.ATTRACT)
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
+	tween.set_loops()
+	tween.tween_property(node, "scale", original_scale * (1.0 + strength), duration * 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", original_scale * (1.0 + strength * 0.5), duration * 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "scale", original_scale * (1.0 + strength), duration * 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "scale", original_scale, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	TweenManager.track(node, Animations.ATTRACT, tween)
+	return tween
+
+## Orbits the node in a circle around its original position.
+func orbit(node: CanvasItem, duration: float = 2.0, radius: float = 30.0, start_angle: float = 0.0) -> Tween:
+	TweenManager.stop(node, Animations.ORBIT)
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
+	tween.set_loops()
+	var steps = 60
+	for i in range(steps + 1):
+		var angle = start_angle + (float(i) / steps) * TAU
+		var offset = Vector2(cos(angle), sin(angle)) * radius
+		tween.tween_property(node, "position", original_pos + offset, duration / steps).set_trans(Tween.TRANS_LINEAR)
+	TweenManager.track(node, Animations.ORBIT, tween)
+	return tween
+
+## Gentle organic sway like a plant in wind.
+func sway(node: CanvasItem, duration: float = 2.0, angle: float = 8.0) -> Tween:
+	TweenManager.stop(node, Animations.SWAY)
+	var tween := node.get_tree().create_tween()
+	tween.set_loops()
+	tween.tween_property(node, "rotation_degrees", angle, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "rotation_degrees", -angle * 0.6, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "rotation_degrees", angle * 0.3, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "rotation_degrees", 0.0, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	TweenManager.track(node, Animations.SWAY, tween)
+	return tween
+
+## Random opacity flicker like a candle or broken light.
+func flicker(node: CanvasItem, duration: float = 0.08, min_alpha: float = 0.4, steps: int = 8) -> Tween:
+	TweenManager.stop(node, Animations.FLICKER)
+	var original_alpha: float = node.modulate.a
+	var tween := node.get_tree().create_tween()
+	tween.set_loops()
+	for i in range(steps):
+		var alpha = randf_range(min_alpha, original_alpha)
+		tween.tween_property(node, "modulate:a", alpha, duration * randf_range(0.5, 1.5))
+	TweenManager.track(node, Animations.FLICKER, tween)
+	return tween
+
+## Rapid red flash loop, urgent warning.
+func alarm(node: CanvasItem, duration: float = 0.3, color : Color = Color(2.0, 0.2, 0.2, 1.0)) -> Tween:
+	TweenManager.stop(node, Animations.ALARM)
+	var original_color: Color = node.modulate
+	var tween := node.get_tree().create_tween()
+	tween.set_loops()
+	tween.tween_property(node, "modulate", color, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(node, "modulate", original_color, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	TweenManager.track(node, Animations.ALARM, tween)
+	return tween
 	#endregion
 
 	#region One-Shot
-
 ## Object fades into the dark and shrinks away.
 func creep_out(node: CanvasItem, duration: float = 1.0) -> Tween:
 	TweenManager.stop(node, Animations.CREEP_OUT)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "modulate", Color(0.2, 0.2, 0.2, 1), duration * 0.5)
 	tween.tween_property(node, "scale", original_scale * 0.8, duration * 0.5)
 	tween.tween_property(node, "modulate:a", 0.0, duration * 0.3)
@@ -423,8 +502,8 @@ func creep_out(node: CanvasItem, duration: float = 1.0) -> Tween:
 ## Makes the object look like it's being shut down like a cartoon TV.
 func tv_shutdown(node: CanvasItem, duration: float = 0.5) -> Tween:
 	TweenManager.stop(node, Animations.TV_SHUTDOWN)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * Vector2(1.3, 0.7), duration * 0.25).set_trans(Tween.TRANS_ELASTIC)
 	tween.tween_property(node, "scale", original_scale * Vector2(0.7, 1.3), duration * 0.25).set_trans(Tween.TRANS_ELASTIC)
 	tween.tween_property(node, "scale", Vector2.ZERO, duration * 0.2).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
@@ -434,7 +513,7 @@ func tv_shutdown(node: CanvasItem, duration: float = 0.5) -> Tween:
 ## Spins and collapses into nothingness.
 func black_hole(node: CanvasItem, duration: float = 0.8) -> Tween:
 	TweenManager.stop(node, Animations.BLACK_HOLE)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.parallel().tween_property(node, "scale", Vector2.ZERO, duration).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(node, "modulate:a", 0.0, duration)
 	tween.parallel().tween_property(node, "rotation_degrees", node.rotation_degrees + 720, duration)
@@ -444,7 +523,7 @@ func black_hole(node: CanvasItem, duration: float = 0.8) -> Tween:
 ## Boom!
 func explode(node: CanvasItem, duration: float = 0.4, scale_amt: float = 1.8) -> Tween:
 	TweenManager.stop(node, Animations.EXPLODE)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", Vector2.ONE * scale_amt, duration * 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "rotation_degrees", randf_range(-10, 10), duration * 0.2)
 	tween.tween_property(node, "scale", Vector2.ONE * 0.5, duration * 0.4).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
@@ -455,9 +534,9 @@ func explode(node: CanvasItem, duration: float = 0.4, scale_amt: float = 1.8) ->
 ## Builds up energy visually before a release.
 func charge_up(node: CanvasItem, duration: float = 1.0) -> Tween:
 	TweenManager.stop(node, Animations.CHARGE_UP)
-	var original_scale = node.scale
-	var original_color = node.modulate
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var original_color: Color = node.modulate
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * 0.8, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(node, "modulate", Color(1.5, 1.5, 0.5, 1.0), duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	for i in range(3):
@@ -474,9 +553,9 @@ func charge_up(node: CanvasItem, duration: float = 1.0) -> Tween:
 ## Shrinks and wobbles like it took a hit.
 func punch_out(node: CanvasItem, duration: float = 0.5, min_scale: float = 0.5) -> Tween:
 	TweenManager.stop(node, Animations.PUNCH_OUT)
-	var original_scale = node.scale
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * min_scale, duration * 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	for i in range(3):
 		var jitter = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 5.0
@@ -489,8 +568,8 @@ func punch_out(node: CanvasItem, duration: float = 0.5, min_scale: float = 0.5) 
 ## Bounces around as if hitting walls.
 func ricochet(node: CanvasItem, duration: float = 0.8, strength: float = 30.0, bounces: int = 4) -> Tween:
 	TweenManager.stop(node, Animations.RICOCHET)
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	for i in range(bounces):
 		var random_dir = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
 		var target_pos = original_pos + random_dir * strength
@@ -500,16 +579,15 @@ func ricochet(node: CanvasItem, duration: float = 0.8, strength: float = 30.0, b
 	return tween
 
 ## Simulates a digital glitch with color and position jitter.
-func glitch(node: CanvasItem, duration: float = 1.0, intensity: float = 10.0) -> Tween:
+func glitch(node: CanvasItem, duration: float = 1.0, intensity: float = 10.0, frames: int = 12) -> Tween:
 	TweenManager.stop(node, Animations.GLITCH)
-	var original_pos = node.position
-	var original_color = node.modulate
-	var tween = node.get_tree().create_tween()
-	var glitch_frames = 12
-	for i in range(glitch_frames):
+	var original_pos: Vector2 = node.position
+	var original_color: Color = node.modulate
+	var tween := node.get_tree().create_tween()
+	for i in range(frames):
 		var offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * intensity
 		var color_shift = Color(randf_range(0.8, 1.2), randf_range(0.8, 1.2), randf_range(0.8, 1.2), 1.0)
-		var glitch_time = duration / glitch_frames * 0.5
+		var glitch_time = duration / frames * 0.5
 		tween.tween_property(node, "position", original_pos + offset, glitch_time)
 		tween.parallel().tween_property(node, "modulate", color_shift, glitch_time)
 		tween.tween_property(node, "position", original_pos, glitch_time)
@@ -522,9 +600,9 @@ func glitch(node: CanvasItem, duration: float = 1.0, intensity: float = 10.0) ->
 ## A fast zoom and shake for a startling impact.
 func jump_scare(node: CanvasItem, duration: float = 0.4, intensity: float = 1.3) -> Tween:
 	TweenManager.stop(node, Animations.JUMP_SCARE)
-	var original_scale = node.scale
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * intensity, duration * 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	for i in range(6):
 		var shake_offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized() * 10.0
@@ -535,19 +613,20 @@ func jump_scare(node: CanvasItem, duration: float = 0.4, intensity: float = 1.3)
 	return tween
 
 ## Highlights the node with a glowing effect. Supports PlayState for hold/release.
-func spotlight(node: CanvasItem, duration: float = 1.0, glow: Color = Color(1.5, 1.5, 1.5, 1.0), state: PlayState = PlayState.FULL) -> Tween:
+func spotlight(node: CanvasItem, duration: float = 1.0, glow: Color = Color(1.5, 1.5, 1.5, 1.0), state: PlayState = PlayState.FULL, use_self_modulate : bool = false) -> Tween:
 	TweenManager.stop(node, Animations.SPOTLIGHT)
-	var original_color = node.modulate
-	var tween = node.get_tree().create_tween()
+	var original_color: Color = node.modulate if not use_self_modulate else node.self_modulate
+	var node_modulate_property: String = "modulate" if not use_self_modulate else "self_modulate"
+	var tween := node.get_tree().create_tween()
 	match state:
 		PlayState.ENTER:
-			tween.tween_property(node, "modulate", glow, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tween.tween_property(node, node_modulate_property, glow, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		PlayState.EXIT:
-			tween.tween_property(node, "modulate", glow, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tween.tween_property(node, node_modulate_property, glow, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		PlayState.FULL:
-			tween.tween_property(node, "modulate", glow, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-			tween.tween_property(node, "modulate", glow, duration * 0.4)
-			tween.tween_property(node, "modulate", original_color, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tween.tween_property(node, node_modulate_property, glow, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			tween.tween_property(node, node_modulate_property, glow, duration * 0.4)
+			tween.tween_property(node, node_modulate_property, original_color, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	TweenManager.track(node, Animations.SPOTLIGHT, tween)
 	return tween
 
@@ -555,27 +634,28 @@ func spotlight(node: CanvasItem, duration: float = 1.0, glow: Color = Color(1.5,
 func flip(node: CanvasItem, duration: float = 0.4, axis: String = "x", flips: int = 1) -> Tween:
 	TweenManager.stop(node, Animations.FLIP)
 	var original_scale: Vector2 = node.scale
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	for i in range(flips):
 		tween.tween_property(node, "scale:" + axis, -original_scale[axis], duration * 0.5 / flips).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tween.tween_property(node, "scale:" + axis, original_scale[axis], duration * 0.5 / flips).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	TweenManager.track(node, Animations.FLIP, tween)
 	return tween
 
-## Makes the node hop upward and land back down.
-func hop(node: CanvasItem, duration: float = 0.4, height: float = 20.0) -> Tween:
+## Makes the node hop in a given direction and land back.
+func hop(node: CanvasItem, duration: float = 0.4, height: float = 20.0, direction: Vector2 = Vector2.UP) -> Tween:
 	TweenManager.stop(node, Animations.HOP)
 	var original_pos: Vector2 = node.position
-	var tween = node.get_tree().create_tween()
-	tween.tween_property(node, "position:y", original_pos.y - height, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(node, "position:y", original_pos.y, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	var offset = direction.normalized() * height
+	var tween := node.get_tree().create_tween()
+	tween.tween_property(node, "position", original_pos + offset, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "position", original_pos, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	TweenManager.track(node, Animations.HOP, tween)
 	return tween
 
 ## Rapidly blinks the node's opacity.
 func blink(node: CanvasItem, duration: float = 0.1, times: int = 3, from: float = 0.0, to: float = 1.0) -> Tween:
 	TweenManager.stop(node, Animations.BLINK)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	for i in range(times):
 		tween.tween_property(node, "modulate:a", from, duration)
 		tween.tween_property(node, "modulate:a", to, duration)
@@ -587,7 +667,7 @@ func squash(node: CanvasItem, duration: float = 0.2, amount: float = 0.3, horizo
 	TweenManager.stop(node, Animations.SQUASH)
 	var original_scale: Vector2 = node.scale
 	var target = Vector2(original_scale.x * (1 + amount), original_scale.y * (1 - amount)) if horizontal else Vector2(original_scale.x * (1 - amount), original_scale.y * (1 + amount))
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", target, duration * 0.5).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(node, "scale", original_scale, duration * 0.5).set_trans(Tween.TRANS_SINE)
 	TweenManager.track(node, Animations.SQUASH, tween)
@@ -597,7 +677,7 @@ func squash(node: CanvasItem, duration: float = 0.2, amount: float = 0.3, horizo
 func stretch(node: CanvasItem, duration: float = 0.2, amount: float = 0.3) -> Tween:
 	TweenManager.stop(node, Animations.STRETCH)
 	var original_scale: Vector2 = node.scale
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", Vector2(original_scale.x * (1 - amount), original_scale.y * (1 + amount)), duration * 0.5).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(node, "scale", original_scale, duration * 0.5).set_trans(Tween.TRANS_SINE)
 	TweenManager.track(node, Animations.STRETCH, tween)
@@ -607,7 +687,7 @@ func stretch(node: CanvasItem, duration: float = 0.2, amount: float = 0.3) -> Tw
 func snap(node: CanvasItem, duration: float = 0.1, scale: Vector2 = Vector2(1.3, 1.3), state: PlayState = PlayState.FULL) -> Tween:
 	TweenManager.stop(node, Animations.SNAP)
 	var original_scale: Vector2 = node.scale
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	match state:
 		PlayState.ENTER:
 			tween.tween_property(node, "scale", scale, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -622,7 +702,7 @@ func snap(node: CanvasItem, duration: float = 0.1, scale: Vector2 = Vector2(1.3,
 ## Quickly flashes the node's opacity.
 func flash(node: CanvasItem, duration: float = 0.1, flashes: int = 3) -> Tween:
 	TweenManager.stop(node, Animations.BLINK)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	for i in range(flashes):
 		tween.tween_property(node, "modulate", Color(1, 1, 1, 0), duration)
 		tween.tween_property(node, "modulate", Color(1, 1, 1, 1), duration)
@@ -633,7 +713,7 @@ func flash(node: CanvasItem, duration: float = 0.1, flashes: int = 3) -> Tween:
 func fade_in(node: CanvasItem, duration: float = 0.5) -> Tween:
 	TweenManager.stop(node, Animations.FADE_IN)
 	node.modulate.a = 0.0
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "modulate:a", 1.0, duration).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN)
 	TweenManager.track(node, Animations.FADE_IN, tween)
 	return tween
@@ -641,7 +721,7 @@ func fade_in(node: CanvasItem, duration: float = 0.5) -> Tween:
 ## Fades the node out to transparent.
 func fade_out(node: CanvasItem, duration: float = 0.5) -> Tween:
 	TweenManager.stop(node, Animations.FADE_OUT)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_OUT)
 	TweenManager.track(node, Animations.FADE_OUT, tween)
 	return tween
@@ -650,7 +730,7 @@ func fade_out(node: CanvasItem, duration: float = 0.5) -> Tween:
 func twist(node: CanvasItem, duration: float = 0.4, angle: float = 30.0) -> Tween:
 	TweenManager.stop(node, Animations.TWIST)
 	var start = node.rotation_degrees
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "rotation_degrees", start + angle, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "rotation_degrees", start, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	TweenManager.track(node, Animations.TWIST, tween)
@@ -659,8 +739,8 @@ func twist(node: CanvasItem, duration: float = 0.4, angle: float = 30.0) -> Twee
 ## Expands and contracts the node once.
 func pulsate(node: CanvasItem, duration: float = 0.5, scale_factor: float = 1.2) -> Tween:
 	TweenManager.stop(node, Animations.PULSATE)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * scale_factor, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(node, "scale", original_scale, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	TweenManager.track(node, Animations.PULSATE, tween)
@@ -669,10 +749,10 @@ func pulsate(node: CanvasItem, duration: float = 0.5, scale_factor: float = 1.2)
 ## Rapid nervous jitter with rotation and scale micro-variations.
 func jitter(node: CanvasItem, duration: float = 0.5, amount: float = 5.0, times: int = 8) -> Tween:
 	TweenManager.stop(node, Animations.JITTER)
-	var original_position = node.position
-	var original_rotation = node.rotation_degrees
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_position : Vector2 = node.position
+	var original_rotation : float = node.rotation_degrees
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	for i in range(times):
 		var offset = Vector2(randf_range(-amount, amount), randf_range(-amount, amount))
 		var rot = randf_range(-3.0, 3.0)
@@ -689,8 +769,8 @@ func jitter(node: CanvasItem, duration: float = 0.5, amount: float = 5.0, times:
 ## Alternates between squash and stretch repeatedly, like jelly wobbling.
 func jelly(node: CanvasItem, duration: float = 0.6, amount: float = 0.3, cycles: int = 2) -> Tween:
 	TweenManager.stop(node, Animations.JELLY)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	for i in range(cycles):
 		tween.tween_property(node, "scale", original_scale * Vector2(1.0 + amount, 1.0 - amount), duration * 0.25 / cycles).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		tween.tween_property(node, "scale", original_scale * Vector2(1.0 - amount, 1.0 + amount), duration * 0.25 / cycles).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -699,11 +779,12 @@ func jelly(node: CanvasItem, duration: float = 0.6, amount: float = 0.3, cycles:
 	return tween
 
 ## Rotates the node one or more full revolutions.
-func spin(node: CanvasItem, duration: float = 0.5, revolutions: float = 1.0) -> Tween:
+func spin(node: CanvasItem, duration: float = 0.5, revolutions: float = 1.0, clockwise: bool = true) -> Tween:
 	TweenManager.stop(node, Animations.SPIN)
-	var original_rotation = node.rotation_degrees
-	var tween = node.get_tree().create_tween()
-	tween.tween_property(node, "rotation_degrees", original_rotation + 360.0 * revolutions, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	var original_rotation : float = node.rotation_degrees
+	var direction = 1.0 if clockwise else -1.0
+	var tween := node.get_tree().create_tween()
+	tween.tween_property(node, "rotation_degrees", original_rotation + 360.0 * revolutions * direction, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(node, "rotation_degrees", original_rotation, 0.0)
 	TweenManager.track(node, Animations.SPIN, tween)
 	return tween
@@ -715,7 +796,7 @@ func pop_in(node: CanvasItem, duration: float = 0.3, overshoot: float = 0.1) -> 
 	var original_alpha := node.modulate.a
 	node.scale = Vector2.ZERO
 	node.modulate.a = 0.0
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * (1.0 + overshoot), duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", original_scale, duration * 0.33)
 	tween.parallel().tween_property(node, "modulate:a", original_alpha, duration * 0.66)
@@ -726,7 +807,7 @@ func pop_in(node: CanvasItem, duration: float = 0.3, overshoot: float = 0.1) -> 
 func pop_out(node: CanvasItem, duration: float = 0.3, overshoot: float = 0.1) -> Tween:
 	TweenManager.stop(node, Animations.POP_OUT)
 	var original_scale: Vector2 = node.scale
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * (1.0 + overshoot), duration * 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", Vector2.ZERO, duration * 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(node, "modulate:a", 0.0, duration * 0.8)
@@ -738,7 +819,7 @@ func skew(node: Node2D, duration: float = 0.3, skew_x: float = 0.5, skew_y: floa
 	TweenManager.stop(node, Animations.SKEW)
 	var original_scale: Vector2 = node.scale
 	var target_scale := original_scale * Vector2(1.0 + skew_x, 1.0 + skew_y)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", target_scale, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(node, "scale", original_scale, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT).set_delay(duration)
 	TweenManager.track(node, Animations.SKEW, tween)
@@ -747,7 +828,7 @@ func skew(node: Node2D, duration: float = 0.3, skew_x: float = 0.5, skew_y: floa
 ## Fades out and scales down the node.
 func vanish(node: CanvasItem, duration: float = 0.4) -> Tween:
 	TweenManager.stop(node, Animations.VANISH)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "modulate:a", 0.0, duration)
 	tween.parallel().tween_property(node, "scale", Vector2(0.0, 0.0), duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	TweenManager.track(node, Animations.VANISH, tween)
@@ -756,20 +837,24 @@ func vanish(node: CanvasItem, duration: float = 0.4) -> Tween:
 ## Quickly scales the node in with a slight bounce.
 func punch_in(node: CanvasItem, duration: float = 0.15, strength: float = 0.3) -> Tween:
 	TweenManager.stop(node, Animations.PUNCH_IN)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * (1 + strength), duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", original_scale, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	TweenManager.track(node, Animations.PUNCH_IN, tween)
 	return tween
 
 ## Moves the node back and forth rapidly.
-func shake(node: CanvasItem, duration: float = 0.3, amount: float = 10.0, shakes: int = 5) -> Tween:
+## axis: Vector2.RIGHT for horizontal only, Vector2.DOWN for vertical only, Vector2.ONE for both.
+func shake(node: CanvasItem, duration: float = 0.3, amount: float = 10.0, shakes: int = 5, axis: Vector2 = Vector2.ONE) -> Tween:
 	TweenManager.stop(node, Animations.SHAKE)
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	for i in range(shakes):
-		var offset = Vector2(randf_range(-amount, amount), randf_range(-amount, amount))
+		var offset = Vector2(
+			randf_range(-amount, amount) * axis.x,
+			randf_range(-amount, amount) * axis.y
+		)
 		tween.tween_property(node, "position", original_pos + offset, duration / (shakes * 2))
 		tween.tween_property(node, "position", original_pos, duration / (shakes * 2))
 	TweenManager.track(node, Animations.SHAKE, tween)
@@ -778,13 +863,13 @@ func shake(node: CanvasItem, duration: float = 0.3, amount: float = 10.0, shakes
 ## Drops the node from above into its position.
 func drop_in(node: CanvasItem, duration: float = 0.5, drop_height: float = 100.0, scale_distort: Vector2 = Vector2(1.2, 0.8)) -> Tween:
 	TweenManager.stop(node, Animations.DROP_IN)
-	var original_pos = node.position
-	var original_scale = node.scale
-	var original_alpha = node.modulate.a
+	var original_pos: Vector2 = node.position
+	var original_scale: Vector2 = node.scale
+	var original_alpha: float = node.modulate.a
 	node.position = original_pos - Vector2(0, drop_height)
 	node.scale = scale_distort
 	node.modulate.a = 0.0
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "position", original_pos, duration).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "scale", original_scale, duration * 0.6).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "modulate:a", original_alpha, duration * 0.4)
@@ -794,8 +879,8 @@ func drop_in(node: CanvasItem, duration: float = 0.5, drop_height: float = 100.0
 ## Drops the node downward and fades out.
 func drop_out(node: CanvasItem, duration: float = 0.5, drop_height: float = 100.0) -> Tween:
 	TweenManager.stop(node, Animations.DROP_OUT)
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "position", original_pos + Vector2(0, drop_height), duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(node, "modulate:a", 0.0, duration * 0.6)
 	TweenManager.track(node, Animations.DROP_OUT, tween)
@@ -804,8 +889,8 @@ func drop_out(node: CanvasItem, duration: float = 0.5, drop_height: float = 100.
 ## Stretches in one direction then snaps back with overshoot.
 func rubber_band(node: CanvasItem, duration: float = 0.5, strength: float = 0.4) -> Tween:
 	TweenManager.stop(node, Animations.RUBBER_BAND)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * Vector2(1.0 + strength, 1.0 - strength * 0.5), duration * 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", original_scale * Vector2(0.9, 1.1), duration * 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", original_scale * Vector2(1.05, 0.97), duration * 0.2).set_trans(Tween.TRANS_SINE)
@@ -816,8 +901,8 @@ func rubber_band(node: CanvasItem, duration: float = 0.5, strength: float = 0.4)
 ## Rapidly cycles random rotations then snaps to original. Good for randomness feedback.
 func fidget(node: CanvasItem, duration: float = 0.8, spins: int = 6) -> Tween:
 	TweenManager.stop(node, Animations.FIDGET)
-	var original_rotation = node.rotation_degrees
-	var tween = node.get_tree().create_tween()
+	var original_rotation : float = node.rotation_degrees
+	var tween := node.get_tree().create_tween()
 	for i in range(spins):
 		var random_rot = randf_range(-25.0, 25.0)
 		tween.tween_property(node, "rotation_degrees", original_rotation + random_rot, duration / spins).set_trans(Tween.TRANS_SINE)
@@ -828,8 +913,8 @@ func fidget(node: CanvasItem, duration: float = 0.8, spins: int = 6) -> Tween:
 ## Slowly shrinks Y while expanding X, like air leaving a balloon.
 func deflate(node: CanvasItem, duration: float = 0.6) -> Tween:
 	TweenManager.stop(node, Animations.DEFLATE)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * Vector2(1.3, 0.2), duration * 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.tween_property(node, "scale", original_scale * Vector2(1.1, 0.15), duration * 0.2).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(node, "scale", original_scale, duration * 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
@@ -839,9 +924,9 @@ func deflate(node: CanvasItem, duration: float = 0.6) -> Tween:
 ## Slow random wobble on position and rotation. Good for status effects.
 func drunk(node: CanvasItem, duration: float = 0.8) -> Tween:
 	TweenManager.stop(node, Animations.DRUNK)
-	var original_pos = node.position
+	var original_pos: Vector2 = node.position
 	var original_rot = node.rotation_degrees
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	for i in range(4):
 		var offset = Vector2(randf_range(-8, 8), randf_range(-5, 5))
 		var rot = randf_range(-8, 8)
@@ -855,9 +940,9 @@ func drunk(node: CanvasItem, duration: float = 0.8) -> Tween:
 ## Squash on hit, bounce up, then settle. Classic landing feel.
 func impact_land(node: CanvasItem, duration: float = 0.5) -> Tween:
 	TweenManager.stop(node, Animations.IMPACT_LAND)
-	var original_scale = node.scale
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * Vector2(1.4, 0.6), duration * 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", original_scale * Vector2(0.85, 1.2), duration * 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "position:y", original_pos.y - 12, duration * 0.2)
@@ -866,75 +951,58 @@ func impact_land(node: CanvasItem, duration: float = 0.5) -> Tween:
 	tween.tween_property(node, "scale", original_scale, duration * 0.2).set_trans(Tween.TRANS_SINE)
 	TweenManager.track(node, Animations.IMPACT_LAND, tween)
 	return tween
-	#endregion
-
-	#region NEW
-	
-## Gentle organic sway like a plant in wind.
-func sway(node: CanvasItem, duration: float = 2.0, angle: float = 8.0) -> Tween:
-	TweenManager.stop(node, Animations.SWAY)
-	var tween = node.get_tree().create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "rotation_degrees", angle, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "rotation_degrees", -angle * 0.6, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "rotation_degrees", angle * 0.3, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "rotation_degrees", 0.0, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	TweenManager.track(node, Animations.SWAY, tween)
-	return tween
-
-## Random opacity flicker like a candle or broken light.
-func flicker(node: CanvasItem, duration: float = 0.08, min_alpha: float = 0.4) -> Tween:
-	TweenManager.stop(node, Animations.FLICKER)
-	var original_alpha = node.modulate.a
-	var tween = node.get_tree().create_tween()
-	tween.set_loops()
-	for i in range(8):
-		var alpha = randf_range(min_alpha, original_alpha)
-		tween.tween_property(node, "modulate:a", alpha, duration * randf_range(0.5, 1.5))
-	TweenManager.track(node, Animations.FLICKER, tween)
-	return tween
 
 ## Big scale punch with chromatic color shift. Classic critical hit feedback.
-func critical_hit(node: CanvasItem, duration: float = 0.5, color: Color = Color(2.0, 0.3, 0.3, 1.0)) -> Tween:
+func critical_hit(node: CanvasItem, duration: float = 0.5, color: Color = Color(2.0, 0.3, 0.3, 1.0), scale_amount: float = 1.6) -> Tween:
 	TweenManager.stop(node, Animations.CRITICAL_HIT)
-	var original_scale = node.scale
-	var original_color = node.modulate
+	var original_scale: Vector2 = node.scale
+	var original_color: Color = node.modulate
 	var secondary_color = Color(color.r, clampf(color.g + 0.8, 0.0, 2.0), 0.2, 1.0)
-	var tween = node.get_tree().create_tween()
-	tween.tween_property(node, "scale", original_scale * 1.6, duration * 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(node, "modulate", color, duration * 0.1)
-	tween.tween_property(node, "scale", original_scale * 0.85, duration * 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tween.parallel().tween_property(node, "modulate", secondary_color, duration * 0.15)
-	tween.tween_property(node, "scale", original_scale * 1.1, duration * 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(node, "scale", original_scale, duration * 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(node, "modulate", original_color, duration * 0.3)
+	var tween := node.get_tree().create_tween()
+	if scale_amount != 1.0:
+		tween.tween_property(node, "scale", original_scale * scale_amount, duration * 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(node, "modulate", color, duration * 0.1)
+		tween.tween_property(node, "scale", original_scale * 0.85, duration * 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tween.parallel().tween_property(node, "modulate", secondary_color, duration * 0.15)
+		tween.tween_property(node, "scale", original_scale * scale_amount * 0.69, duration * 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(node, "scale", original_scale, duration * 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(node, "modulate", original_color, duration * 0.3)
+	else:
+		tween.tween_property(node, "modulate", color, duration * 0.1)
+		tween.tween_property(node, "modulate", secondary_color, duration * 0.15)
+		tween.tween_property(node, "modulate", original_color, duration * 0.3)
 	TweenManager.track(node, Animations.CRITICAL_HIT, tween)
 	return tween
 
 ## Scale up, glow, then settle. Celebratory upgrade feedback.
-func upgrade(node: CanvasItem, duration: float = 0.8, glow: Color = Color(2.0, 1.8, 0.2, 1.0)) -> Tween:
+func upgrade(node: CanvasItem, duration: float = 0.8, glow: Color = Color(2.0, 1.8, 0.2, 1.0), scale_amount: float = 1.5) -> Tween:
 	TweenManager.stop(node, Animations.UPGRADE)
-	var original_scale = node.scale
-	var original_color = node.modulate
-	var secondary_color = Color(glow.r * 0.9, glow.g * 0.9, glow.b + 0.3, 1.0)
-	var tween = node.get_tree().create_tween()
-	tween.tween_property(node, "scale", original_scale * 0.8, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tween.tween_property(node, "scale", original_scale * 1.5, duration * 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(node, "modulate", glow, duration * 0.2)
-	tween.tween_property(node, "scale", original_scale * 1.2, duration * 0.15).set_trans(Tween.TRANS_SINE)
-	tween.parallel().tween_property(node, "modulate", secondary_color, duration * 0.15)
-	tween.tween_property(node, "scale", original_scale * 1.35, duration * 0.1).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(node, "scale", original_scale, duration * 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(node, "modulate", original_color, duration * 0.3)
+	var original_scale: Vector2 = node.scale
+	var original_color: Color = node.modulate
+	var secondary_color : Color = Color(glow.r * 0.9, glow.g * 0.9, glow.b + 0.3, 1.0)
+	var tween := node.get_tree().create_tween()
+	if scale_amount != 1.0:
+		tween.tween_property(node, "scale", original_scale * 0.8, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tween.tween_property(node, "scale", original_scale * scale_amount, duration * 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(node, "modulate", glow, duration * 0.2)
+		tween.tween_property(node, "scale", original_scale * (scale_amount * 0.8), duration * 0.15).set_trans(Tween.TRANS_SINE)
+		tween.parallel().tween_property(node, "modulate", secondary_color, duration * 0.15)
+		tween.tween_property(node, "scale", original_scale * (scale_amount * 0.9), duration * 0.1).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(node, "scale", original_scale, duration * 0.3).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(node, "modulate", original_color, duration * 0.3)
+	else:
+		tween.tween_property(node, "modulate", glow, duration * 0.2)
+		tween.tween_property(node, "modulate", secondary_color, duration * 0.15)
+		tween.tween_property(node, "modulate", original_color, duration * 0.3)
 	TweenManager.track(node, Animations.UPGRADE, tween)
 	return tween
 
 ## Unfolds the node by scaling Y from 0 to full size.
 func fold_in(node: CanvasItem, duration: float = 0.3) -> Tween:
 	TweenManager.stop(node, Animations.FOLD_IN)
-	var original_scale = node.scale
+	var original_scale: Vector2 = node.scale
 	node.scale.y = 0.0
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale:y", original_scale.y, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	TweenManager.track(node, Animations.FOLD_IN, tween)
 	return tween
@@ -942,27 +1010,16 @@ func fold_in(node: CanvasItem, duration: float = 0.3) -> Tween:
 ## Folds the node away by scaling Y to 0.
 func fold_out(node: CanvasItem, duration: float = 0.3) -> Tween:
 	TweenManager.stop(node, Animations.FOLD_OUT)
-	var tween = node.get_tree().create_tween()
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale:y", 0.0, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	TweenManager.track(node, Animations.FOLD_OUT, tween)
-	return tween
-
-## Rapid red flash loop, urgent warning.
-func alarm(node: CanvasItem, duration: float = 0.3, color : Color = Color(2.0, 0.2, 0.2, 1.0)) -> Tween:
-	TweenManager.stop(node, Animations.ALARM)
-	var original_color = node.modulate
-	var tween = node.get_tree().create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "modulate", color, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tween.tween_property(node, "modulate", original_color, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	TweenManager.track(node, Animations.ALARM, tween)
 	return tween
 
 ## Quick nudge in one direction then back, like pointing at something.
 func point(node: CanvasItem, duration: float = 0.5, direction: Vector2 = Vector2.RIGHT, amount: float = 24.0) -> Tween:
 	TweenManager.stop(node, Animations.POINT)
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
+	var original_pos: Vector2 = node.position
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "position", original_pos + direction.normalized() * amount, duration * 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "position", original_pos, duration * 0.7).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	TweenManager.track(node, Animations.POINT, tween)
@@ -971,9 +1028,9 @@ func point(node: CanvasItem, duration: float = 0.5, direction: Vector2 = Vector2
 ## Scale up, slight rotation, then settle. Celebratory reveal.
 func tada(node: CanvasItem, duration: float = 0.6) -> Tween:
 	TweenManager.stop(node, Animations.TADA)
-	var original_scale = node.scale
-	var original_rotation = node.rotation_degrees
-	var tween = node.get_tree().create_tween()
+	var original_scale: Vector2 = node.scale
+	var original_rotation : float = node.rotation_degrees
+	var tween := node.get_tree().create_tween()
 	tween.tween_property(node, "scale", original_scale * 0.8, duration * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.tween_property(node, "scale", original_scale * 1.4, duration * 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(node, "rotation_degrees", original_rotation - 8.0, duration * 0.2)
@@ -983,44 +1040,57 @@ func tada(node: CanvasItem, duration: float = 0.6) -> Tween:
 	TweenManager.track(node, Animations.TADA, tween)
 	return tween
 
-## Slowly fades to low alpha and back, ethereal feel.
-func ghost(node: CanvasItem, duration: float = 2.0, min_alpha: float = 0.2) -> Tween:
-	TweenManager.stop(node, Animations.GHOST)
-	var original_alpha = node.modulate.a
-	var tween = node.get_tree().create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "modulate:a", min_alpha, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "modulate:a", original_alpha, duration * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	TweenManager.track(node, Animations.GHOST, tween)
+	#endregion
+
+	#region NEW
+## Squash on press, bounce back with overshoot, then settle.
+func press(node: CanvasItem, duration: float = 0.3) -> Tween:
+	TweenManager.stop(node, Animations.PRESS)
+	var original_scale: Vector2 = node.scale
+	var tween := node.get_tree().create_tween()
+	tween.tween_property(node, "scale", original_scale * 0.8, duration * 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", original_scale * 1.1, duration * 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", original_scale, duration * 0.30).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	TweenManager.track(node, Animations.PRESS, tween)
 	return tween
 
-## Grows slightly then pulses to draw attention.
-func attract(node: CanvasItem, duration: float = 1.2, strength: float = 0.12) -> Tween:
-	TweenManager.stop(node, Animations.ATTRACT)
-	var original_scale = node.scale
-	var tween = node.get_tree().create_tween()
-	tween.set_loops()
-	tween.tween_property(node, "scale", original_scale * (1.0 + strength), duration * 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(node, "scale", original_scale * (1.0 + strength * 0.5), duration * 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "scale", original_scale * (1.0 + strength), duration * 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(node, "scale", original_scale, duration * 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	TweenManager.track(node, Animations.ATTRACT, tween)
+## Scale + rotation wiggle on press.
+func press_rotate(node: CanvasItem, duration: float = 0.3) -> Tween:
+	TweenManager.stop(node, Animations.PRESS_ROTATE)
+	var original_scale: Vector2 = node.scale
+	var original_rotation : float = node.rotation
+	var tween := node.get_tree().create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(node, "scale", original_scale * 0.85, duration * 0.33).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", original_scale, duration * 0.66).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(duration * 0.33)
+	tween.tween_property(node, "rotation", original_rotation + deg_to_rad(5), duration * 0.33).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(node, "rotation", original_rotation - deg_to_rad(5), duration * 0.33).set_trans(Tween.TRANS_SINE).set_delay(duration * 0.33)
+	tween.tween_property(node, "rotation", original_rotation, duration * 0.33).set_trans(Tween.TRANS_SINE).set_delay(duration * 0.66)
+	TweenManager.track(node, Animations.PRESS_ROTATE, tween)
+	return tween
+	
+## Moves toward a target point and snaps back. Magnetic pull feel.
+func magnetic_pull(node: CanvasItem, duration: float = 0.5, target: Vector2 = Vector2.ZERO, strength: float = 0.4) -> Tween:
+	TweenManager.stop(node, Animations.MAGNETIC_PULL)
+	var original_pos: Vector2 = node.position
+	var pull_pos = original_pos.lerp(target, strength)
+	var tween := node.get_tree().create_tween()
+	tween.tween_property(node, "position", pull_pos, duration * 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(node, "position", original_pos, duration * 0.6).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	TweenManager.track(node, Animations.MAGNETIC_PULL, tween)
 	return tween
 
-## Orbits the node in a circle around its original position.
-func orbit(node: CanvasItem, duration: float = 2.0, radius: float = 30.0) -> Tween:
-	TweenManager.stop(node, Animations.ORBIT)
-	var original_pos = node.position
-	var tween = node.get_tree().create_tween()
-	tween.set_loops()
-	var steps = 60
-	for i in range(steps + 1):
-		var angle = (float(i) / steps) * TAU
-		var offset = Vector2(cos(angle), sin(angle)) * radius
-		tween.tween_property(node, "position", original_pos + offset, duration / steps).set_trans(Tween.TRANS_LINEAR)
-	TweenManager.track(node, Animations.ORBIT, tween)
+## Shake left-right — denial, wrong answer, access refused, refusal/no gesture.
+func headshake(node: CanvasItem, duration: float = 0.5, amount: float = 8.0, times: int = 3) -> Tween:
+	TweenManager.stop(node, Animations.HEADSHAKE)
+	var original_rotation : float = node.rotation_degrees
+	var tween := node.get_tree().create_tween()
+	for i in range(times):
+		var dir = 1.0 if i % 2 == 0 else -1.0
+		tween.tween_property(node, "rotation_degrees", original_rotation + amount * dir, duration * 0.3 / times).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(node, "rotation_degrees", original_rotation, duration * 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	TweenManager.track(node, Animations.HEADSHAKE, tween)
 	return tween
-
 	#endregion
 
 #endregion
